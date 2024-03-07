@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"net/http"
 	"strconv"
 )
 
@@ -104,24 +101,27 @@ func (rule Rule) encode() string {
 	return buffer
 }
 
-func (rule Rule) matchHTTPRequest(httpReq *http.Request, raw []byte) bool {
+func (rule Rule) matchPayload(raw []byte) bool {
 
-	fmt.Println(string(raw))
+	matches := 0
 
 	for key, val := range rule.options.options {
 
 		switch key {
-		case "content":
-			res := performBoyerMoore(httpReq.Host, val)
+		case "payload":
+			res := performBoyerMoore(val, string(raw))
 
-			if len(res) == 0 {
+			if len(res) > 0 {
 
-				return false
+				matches = matches + 1
+				fmt.Println("=======================\nPayload had the value: " + val)
 			}
 		}
 	}
 
-	return true
+	//fmt.Println("------------------------------\nMatched " + fmt.Sprint(matches) + " out of " + fmt.Sprint(len(rule.options.options)))
+
+	return matches == len(rule.options.options)
 }
 
 func (rule Rule) matchProtocol(packet gopacket.Packet) bool {
@@ -129,6 +129,33 @@ func (rule Rule) matchProtocol(packet gopacket.Packet) bool {
 	// TCP
 
 	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+
+	if tcpLayer != nil && (rule.header.protocol == TCP || rule.header.protocol == HTTP) {
+
+		tcpPacket := tcpLayer.(*layers.TCP)
+
+		return rule.matchPayload(tcpPacket.Payload)
+	} else if rule.header.protocol == TCP || rule.header.protocol == HTTP {
+
+		return false
+	}
+
+	// ICMP
+
+	icmpLayer := packet.Layer(layers.LayerTypeICMPv4)
+
+	if icmpLayer != nil && rule.header.protocol == ICMP {
+
+		//icmpPacket := icmpLayer.(*layers.ICMPv4)
+		return true
+	} else if rule.header.protocol == ICMP {
+
+		return false
+	}
+
+	return false
+
+	/*tcpLayer := packet.Layer(layers.LayerTypeTCP)
 
 	if tcpLayer == nil && (rule.header.protocol == TCP || rule.header.protocol == HTTP) {
 
@@ -159,21 +186,29 @@ func (rule Rule) matchProtocol(packet gopacket.Packet) bool {
 
 			reader := bufio.NewReader(bytes.NewReader(tcpPacket.Payload))
 
-			httpReq, err := http.ReadRequest(reader) // TODO: request vs response.
+			_, err := http.ReadRequest(reader) // TODO: request vs response.
 
 			// If there was an error parsing the HTTP request, assume it is not one, for now.
 
 			if err != nil {
 
-				return false
+				if len(string(tcpPacket.Payload)) >= 40 {
+
+					//fmt.Println("Was not HTTP request:\n" + (string(tcpPacket.Payload))[:40])
+				}
+
+				//return false
 			}
 
 			// Otherwise, run the HTTP request through the options.
 
-			if !rule.matchHTTPRequest(httpReq, tcpPacket.Payload) {
+			if !rule.matchHTTPRequest(nil, tcpPacket.Payload) {
 
+				fmt.Println("---------------------\nmatched http rules")
 				return false
 			}
+
+			return true
 		}
 	}
 
@@ -237,7 +272,7 @@ func (rule Rule) matchProtocol(packet gopacket.Packet) bool {
 
 	// Nothing failed to match, this protocol is good to go.
 
-	return true
+	return true*/
 }
 
 func (rule Rule) matchHeader(packet gopacket.Packet) bool {
@@ -246,6 +281,7 @@ func (rule Rule) matchHeader(packet gopacket.Packet) bool {
 
 	if !rule.matchProtocol(packet) {
 
+		//fmt.Println("---------------------\nfailed to match protocol")
 		return false
 	}
 
@@ -263,24 +299,29 @@ func (rule Rule) matchOptions(packet gopacket.Packet) bool {
 	return true
 }
 
+/**
+* Returns true if the packet matches all the requirements of the rule.
+ */
 func (rule Rule) matchRule(packet gopacket.Packet) bool {
 
 	//fmt.Println(rule.options.options["content"])
 
 	// Check if the header matches
-	// TODO: matchHeader should return the application layer if possible.s
+	// TODO: matchHeader should return the application layer if possible.
 
 	if !rule.matchHeader(packet) {
+
+		//fmt.Println("---------------------\nfailed to match header")
 
 		return false
 	}
 
 	// Check if the options match.
 
-	if !rule.matchOptions(packet) {
+	//if !rule.matchOptions(packet) {
 
-		return false
-	}
+	//return false
+	//}
 
 	// If no issues occurred, perform the defined action.
 

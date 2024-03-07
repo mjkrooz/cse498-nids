@@ -9,6 +9,7 @@ COPY ./shared ./shared
 
 RUN apt update
 RUN apt install software-properties-common -y
+RUN apt install -y iputils-ping
 
 # Get up-to-date Golang repositories and update packages
 
