@@ -121,7 +121,7 @@ func listDevices() []string {
 	return devices
 }
 
-func checkPacket(rules []Rule, packet gopacket.Packet) {
+func checkPacket(rules []Rule, packet gopacket.Packet, matchIndex int) bool {
 
 	//fmt.Println(packet.String())
 
@@ -132,8 +132,10 @@ func checkPacket(rules []Rule, packet gopacket.Packet) {
 
 		if rule.matchRule(packet) {
 
-			fmt.Println("Matched rule: " + rule.encode())
-			fmt.Println("With packet: ---- " + packet.String())
+			fmt.Println("=================================================")
+			fmt.Println("Match #" + fmt.Sprint(matchIndex) + ": matched rule: " + rule.encode())
+			//fmt.Println("With packet: ---- " + packet.String())
+			return true
 		} else {
 
 			//fmt.Println("Match failed")
@@ -143,6 +145,8 @@ func checkPacket(rules []Rule, packet gopacket.Packet) {
 		//fmt.Println("======================================================")
 		//fmt.Println("")
 	}
+
+	return false
 }
 
 func openPacketListener(deviceName string, rules []Rule) {
@@ -156,10 +160,15 @@ func openPacketListener(deviceName string, rules []Rule) {
 
 	packetSource := gopacket.NewPacketSource(device, device.LinkType())
 
+	matchIndex := 1
+
 	for packet := range packetSource.Packets() {
 		// Process packet here
 
-		checkPacket(rules, packet)
+		if checkPacket(rules, packet, matchIndex) {
+
+			matchIndex = matchIndex + 1
+		}
 	}
 
 	/*fmt.Println("\nName: ", device.Name)

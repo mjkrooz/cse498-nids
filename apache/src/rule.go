@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"strconv"
@@ -114,7 +113,7 @@ func (rule Rule) matchPayload(raw []byte) bool {
 			if len(res) > 0 {
 
 				matches = matches + 1
-				fmt.Println("=======================\nPayload had the value: " + val)
+				//fmt.Println("=======================\nPayload had the value: " + val)
 			}
 		}
 	}
@@ -327,7 +326,7 @@ func (rule Rule) matchRule(packet gopacket.Packet) bool {
 
 	switch rule.action.actionType {
 	case Alert:
-		fmt.Println("alert")
+		//fmt.Println("alert")
 	}
 
 	return true
