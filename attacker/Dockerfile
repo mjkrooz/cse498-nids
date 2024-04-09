@@ -3,8 +3,8 @@ FROM chasepd/msfconsole:latest
 ENV HOME /root
 WORKDIR /root
 
-RUN apt update
-RUN apt install -y iputils-ping
+RUN apt-get update
+RUN apt-get install -y iputils-ping
 
 #COPY ./src ./src
 #COPY ./shared ./shared

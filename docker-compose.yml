@@ -1,6 +1,19 @@
 version: "3"
 
 services:
+    siem:
+        build: ./siem
+        container_name: siem
+        tty: true
+        networks:
+          net-192.168.123.0:
+              ipv4_address: 192.168.123.5
+        volumes:
+          - ./siem/shared:/root/shared
+          - ./siem/src:/root/src
+        ports:
+          - '8080:80'
+
     apache:
         build: ./apache
         container_name: apache
@@ -9,10 +22,10 @@ services:
             net-192.168.123.0:
                 ipv4_address: 192.168.123.10
         volumes:
-                - ./apache/shared:/root/shared
-                - ./apache/src:/root/src
+            - ./apache/shared:/root/shared
+            - ./apache/src:/root/src
         ports:
-          - '80:8080'
+            - '8081:8080'
                   
     attacker:
         build: ./attacker
@@ -22,7 +35,7 @@ services:
             net-192.168.123.0:
                 ipv4_address: 192.168.123.20
         volumes:
-                - ./attacker/shared:/root/shared
+            - ./attacker/shared:/root/shared
 
 networks:
     net-192.168.123.0:

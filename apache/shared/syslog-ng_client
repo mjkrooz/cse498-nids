@@ -1,0 +1,5 @@
+@version:3.35
+
+source s_file { file("/var/log/syslog"); file("/usr/local/apache2/logs/access_log"); };
+destination d_tcp { tcp("192.168.123.5" port(514)); };
+log { source(s_file); destination(d_tcp); };

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"log"
+	"log/syslog"
 	"strconv"
 )
 
@@ -132,6 +135,24 @@ func (rule Rule) matchProtocol(packet gopacket.Packet) bool {
 	if tcpLayer != nil && (rule.header.protocol == TCP || rule.header.protocol == HTTP) {
 
 		tcpPacket := tcpLayer.(*layers.TCP)
+
+		// TCP ports. TODO: IP layer addresses.
+
+		//fmt.Println("Matching ports:")
+		//fmt.Println("Source: " + fmt.Sprint(rule.header.sourcePort) + "; Real: " + tcpPacket.SrcPort.String())
+		//fmt.Println("Destination: " + fmt.Sprint(rule.header.destinationPort) + "; Real: " + tcpPacket.DstPort.String())
+
+		if rule.header.sourcePort != -1 && rule.header.sourcePort != int(tcpPacket.SrcPort) {
+
+			//fmt.Println("Returned false for source port")
+			return false
+		}
+
+		if rule.header.destinationPort != -1 && rule.header.destinationPort != int(tcpPacket.DstPort) {
+
+			//fmt.Println("Returned false for dest port")
+			return false
+		}
 
 		return rule.matchPayload(tcpPacket.Payload)
 	} else if rule.header.protocol == TCP || rule.header.protocol == HTTP {
@@ -327,6 +348,21 @@ func (rule Rule) matchRule(packet gopacket.Packet) bool {
 	switch rule.action.actionType {
 	case Alert:
 		//fmt.Println("alert")
+		// Configure logger to write to the syslog. You could do this in init(), too.
+		logger, e := syslog.New(syslog.LOG_NOTICE, "cse498_hids")
+		if e == nil {
+			log.SetOutput(logger)
+		} else {
+
+			fmt.Println(e.Error())
+		}
+
+		//buffer := "{\"rule\":\""
+		//buffer = rule.encode() + "\",\"severity\":\"" + "critical" + "\"}"
+
+		// Now from anywhere else in your program, you can use this:
+		log.Println("Rule matched: " + rule.encode())
+		//fmt.Println("printing rule matched: " + rule.encode())
 	}
 
 	return true

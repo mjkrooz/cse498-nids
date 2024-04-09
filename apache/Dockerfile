@@ -7,14 +7,14 @@ COPY ./src ./src
 COPY ./shared ./shared
 
 
-RUN apt update
-RUN apt install software-properties-common -y
-RUN apt install -y iputils-ping
+RUN apt-get update
+RUN apt-get install software-properties-common -y
+RUN apt-get install -y iputils-ping
 
 # Get up-to-date Golang repositories and update packages
 
-RUN add-apt-repository ppa:longsleep/golang-backports
-RUN apt update
+RUN add-apt-repository -y ppa:longsleep/golang-backports
+RUN apt-get update
 
 # Extract Apache 2.4.49
 
@@ -22,7 +22,7 @@ RUN tar -xzf ./shared/apache2.4.49.tar.gz -C /usr/local/
 
 # Install Apache dependencies.
 
-RUN apt install libaprutil1 -y
+RUN apt-get install libaprutil1 -y
 
 # Prepare Apache for exploitation
 
@@ -34,21 +34,30 @@ RUN sed -i -E "s|all denied|all granted|g; s|#(.* cgid_.*)|\1|g" /usr/local/apac
 
 # Expose the vulnerable version of Apache
 
-EXPOSE 80
+EXPOSE 8081
+
+# Install syslog-ng
+
+RUN apt-get install -y syslog-ng
 
 # Install Go
 
-RUN apt install golang-go -y
+RUN apt-get install golang-go -y
 
 # Init and run NIDS
 
 WORKDIR /root/src
 
-RUN apt install libpcap-dev -y
+RUN apt-get install libpcap-dev -y
 
 RUN go mod tidy
 RUN go build
 #RUN ./test1 0
+
+# Start syslog-ng and listen in the background using the client config
+
+#CMD service syslog-ng start
+#CMD syslog-ng -vde -f ../shared/syslog-ng_client
 
 # Start Apache
 

@@ -1,0 +1,1 @@
+docker exec --privileged apache bash -c "service syslog-ng start && syslog-ng -e -f /root/shared/syslog-ng_client"

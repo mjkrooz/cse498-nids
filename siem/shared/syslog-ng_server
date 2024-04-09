@@ -1,0 +1,5 @@
+@version:3.35
+
+source s_tcp { tcp(port(514)); };
+destination d_file { file("/var/log/fromapache" perm(0644)); };
+log { source(s_tcp); destination(d_file); };
