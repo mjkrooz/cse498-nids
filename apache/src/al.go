@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
+	"github.com/iohub/ahocorasick"
 	"log"
 	"math"
 	"os"
@@ -244,179 +245,40 @@ func performKnuthMorrisPratt(input string, within string) []int {
 	return result
 }
 
-func generateGotoFunc(maxStates int) [][]int {
+func prepareAhoCorasick(inputs []string) *cedar.Matcher {
 
-	numChars := 256 // ASCII-chars only.
+	m := cedar.NewMatcher()
 
-	buffer := make([][]int, maxStates+1) // TODO: is this the right way around?
+	for i, word := range inputs {
 
-	for i := range buffer { // This should cycle through 256 times.
-
-		buffer[i] = make([]int, numChars)
-
-		for j := range buffer[i] {
-
-			buffer[i][j] = -1
-		}
-
-		continue
+		m.Insert([]byte(word), i)
 	}
 
-	return buffer
+	m.Compile()
+
+	return m
 }
 
-func generateOutFunc(maxStates int) []int {
-
-	buffer := make([]int, maxStates)
-
-	for i := range buffer {
-
-		buffer[i] = 0
-	}
-
-	return buffer
-}
-
-func generateFailureFunc(maxStates int) []int {
-
-	buffer := make([]int, maxStates)
-
-	for i := range buffer {
-
-		buffer[i] = -1
-	}
-
-	return buffer
-}
-
-func generateMatchingMachine(words []string, maxStates int) (int, []int, []int, [][]int) {
-
-	//k := len(words)
-
-	states := 1
-	outFunc := generateOutFunc(maxStates)
-	failureFunc := generateFailureFunc(maxStates)
-	gotoFunc := generateGotoFunc(maxStates)
-
-	for i, word := range words {
-
-		currentState := 0
-
-		for _, currentChar := range word {
-
-			ord := currentChar
-
-			if gotoFunc[currentState][ord] == -1 {
-
-				gotoFunc[currentState][ord] = states
-				states += 1
-			}
-
-			currentState = gotoFunc[currentState][ord]
-		}
-
-		outFunc[currentState] |= 1 << i
-	}
-
-	for i := 0; i < 256; i++ {
-
-		if gotoFunc[0][i] == -1 {
-
-			gotoFunc[0][i] = 0
-		}
-	}
-
-	queue := make([]int, 0)
-
-	for i := 0; i < 256; i++ {
-
-		if gotoFunc[0][i] != 0 {
-
-			failureFunc[gotoFunc[0][i]] = 0
-			queue = append(queue, gotoFunc[0][i])
-		}
-	}
-
-	for len(queue) > 0 {
-
-		state := queue[0]
-		queue = queue[1:]
-
-		for i := 0; i < 256; i++ {
-
-			if gotoFunc[state][i] != -1 {
-
-				failure := failureFunc[state]
-
-				for gotoFunc[failure][i] == -1 {
-
-					failure = failureFunc[failure]
-				}
-
-				failure = gotoFunc[failure][i]
-
-				failureFunc[gotoFunc[state][i]] = failure
-
-				outFunc[gotoFunc[state][i]] |= outFunc[failure]
-
-				queue = append(queue, gotoFunc[state][i])
-			}
-		}
-	}
-
-	return states, outFunc, failureFunc, gotoFunc
-}
-
-func findNextState(currentState int, nextInput rune, gotoFunc [][]int, failureFunc []int) int {
-
-	answer := currentState
-
-	for gotoFunc[answer][nextInput] == -1 {
-
-		answer = failureFunc[answer]
-	}
-
-	return gotoFunc[answer][nextInput]
-}
-
-func performAhoCorasick(inputs []string, within string) []int {
+func performAhoCorasick(m *cedar.Matcher, within string) []int {
 
 	result := make([]int, 0)
-	maxStates := 0
 
-	for _, input := range inputs {
+	within2 := []byte(within)
 
-		maxStates = maxStates + len(input)
-	}
+	resp := m.Match(within2)
 
-	_, outFunc, failureFunc, gotoFunc := generateMatchingMachine(inputs, maxStates)
+	for resp.HasNext() {
+		items := resp.NextMatchItem(within2)
+		for _, itr := range items {
+			//key := m.Key(within2, itr)
+			//fmt.Println(itr)
+			//fmt.Printf("key:%s value:%d\n", key, itr.Value.(int))
 
-	fmt.Println(gotoFunc)
-	fmt.Println("---------------------")
-	fmt.Println(outFunc)
-	fmt.Println("---------------------")
-	fmt.Println(failureFunc)
-	currentState := 0
-
-	for i := 0; i < len(within); i++ {
-
-		currentState := findNextState(currentState, rune(within[i]), gotoFunc, failureFunc)
-
-		if outFunc[currentState] == 0 {
-
-			continue
-		}
-
-		for j := 0; j < len(inputs); j++ {
-
-			if outFunc[currentState]&(1<<j) > 0 {
-
-				word := inputs[j]
-
-				result = append(result, i-len(word)+1)
-			}
+			result = append(result, itr.At-(itr.KLen-1))
 		}
 	}
+
+	resp.Release()
 
 	return result
 }
@@ -511,19 +373,19 @@ func openPacketListener(deviceName string, rules []Rule) {
 
 func main() {
 
-	/*content := "abc 123 ok go 123 aaaa bye"
-	content2 := "abcaaadeaaaaf"
-	find := []string{"aaa", "abc"}
+	//content := "abc 123 ok go 123 aaaa bye"
+	content2 := "abcaaadeaaadddaf"
+	find := []string{"aaa", "abc", "ddd"}
 
-	result1 := performBoyerMoore(find[0], content)
-	result2 := performRabinKarp(find[0], content, 101)
-	result3 := performKnuthMorrisPratt(find[0], content)
-	result4 := performAhoCorasick(find, content2)
+	result1 := performBoyerMoore(find[0], content2)
+	result2 := performRabinKarp(find[0], content2, 101)
+	result3 := performKnuthMorrisPratt(find[0], content2)
+	result4 := performAhoCorasick(prepareAhoCorasick(find), content2)
 
 	fmt.Println(result1)
 	fmt.Println(result2)
 	fmt.Println(result3)
-	fmt.Println(result4)*/
+	fmt.Println(result4)
 
 	// Parse rules for Suricata.
 
@@ -537,7 +399,7 @@ func main() {
 
 	if len(args) == 0 {
 
-		fmt.Println("\nMissing required device name, choose one of the above by supplying the ID as an argument to the executable.\n")
+		fmt.Println("\nMissing required device name, choose one of the above by supplying the ID as an argument to the executable.")
 		os.Exit(5)
 	}
 	// \Device\NPF_{098785A7-5FA4-4843-A804-00C5EDE5B82F}

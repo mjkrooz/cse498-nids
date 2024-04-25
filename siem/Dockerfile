@@ -6,7 +6,7 @@ RUN chmod -R +r ./
 # Install syslog-ng
 
 RUN apt-get update
-RUN apt-get install -y systemd syslog-ng
+RUN apt-get install -y systemd syslog-ng tcpdump
 
 # Create the log file for the SIEM to watch
 

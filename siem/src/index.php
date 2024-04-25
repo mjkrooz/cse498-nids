@@ -11,11 +11,11 @@ $alertLogs = [];
 
 foreach ($log as $line) {
 
-    $row = explode(" ", $line, 7);
+    $row = explode(" ", $line, 6);
 
-    $buffer = ["datetime" => implode(" ", [$row[0], $row[1], $row[2], $row[3]]), "service" => $row[4], "source" => $row[5], "message" => $row[6]];
+    $buffer = ["datetime" => implode(" ", [$row[0], $row[1], $row[2]]), "service" => $row[3], "source" => $row[4], "message" => $row[5]];
 
-    if (str_starts_with($row[5], "cse498_hids")) {
+    if (str_starts_with($row[4], "cse498_hids")) {
 
         $alertLogs[] = $buffer;
         $numTotalAlerts++;
